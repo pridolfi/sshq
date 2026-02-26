@@ -14,14 +14,14 @@ When working on embedded boards (like Yocto or Buildroot builds), you often face
 
 ## How it Works
 
-1. **The Host Server:** When you run `sshq`, it spins up a lightweight, invisible local web server in the background on your laptop. This server securely holds your `GEMINI_API_KEY` and talks to the Gemini API.
+1. **The Host Server:** When you run `sshq`, it spins up a lightweight local web server in the background on your laptop. This server securely holds your `GEMINI_API_KEY` and talks to the Gemini API.
 2. **The Reverse Tunnel:** `sshq` wraps your standard `ssh` command and adds a reverse port forward (`-R 5000:localhost:5000`), creating a secure tunnel from the board back to your laptop.
-3. **Transparent Injection:** During login, `sshq` passes a completely transparent, base64-encoded Python one-liner to the board. This decodes the tiny `q` client script, drops it into `~/.local/bin/q`, and immediately hands you an interactive shell.
+3. **Transparent Injection:** During login, `sshq` passes a Python one-liner to the board (the `q` client script) and drops it into `~/.local/bin/q`, and immediately hands you an interactive shell.
 
 ## Prerequisites
 
 * Python 3.9 or higher (on your host machine).
-* A Gemini API key (get one from Google AI Studio).
+* A Gemini API key (get one from Google AI Studio or Google Cloud console).
 * Python 3 installed on the target embedded board (standard library only; no external packages required).
 
 ## Installation
@@ -48,7 +48,7 @@ sshq root@192.168.1.100
 ```
 (Note: Any standard SSH flags, like `-i key.pem` or `-p 2222`, will work perfectly).
 
-3. Once connected to the board, use the q command to ask for shell commands. The AI will suggest a command, print it in bold cyan, and ask if you want to run it:
+3. Once connected to the board, use the `q` command to ask for shell commands. The AI will suggest a command, print it in bold cyan, and ask if you want to run it:
 
 ```bash
 $ q find the top 5 largest files in /var/log
