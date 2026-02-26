@@ -1,4 +1,5 @@
 import logging
+import os
 import flask.cli
 from flask import Flask, request, jsonify
 from google import genai
@@ -26,9 +27,11 @@ def ask():
         "Do NOT use markdown formatting (like ```bash). Do NOT provide explanations."
     )
 
+    model = os.environ.get("SSHQ_GEMINI_MODEL", "gemini-2.5-flash")
+
     try:
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model=model,
             contents=data['prompt'],
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
@@ -39,9 +42,10 @@ def ask():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-def start_server():
+def start_server(port=None):
     global client
     # Client automatically picks up the GEMINI_API_KEY environment variable
     client = genai.Client()
 
-    app.run(port=5000, host='127.0.0.1', debug=False)
+    port = port or int(os.environ.get("SSHQ_TUNNEL_PORT", "5000"))
+    app.run(port=port, host='127.0.0.1', debug=False)
