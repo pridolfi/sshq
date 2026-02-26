@@ -9,6 +9,7 @@ Q_SCRIPT = """#!/usr/bin/env python3
 import sys
 import json
 import urllib.request
+import subprocess
 
 def main():
     if len(sys.argv) < 2:
@@ -26,7 +27,25 @@ def main():
     try:
         with urllib.request.urlopen(req) as response:
             result = json.loads(response.read().decode())
-            print(result.get("error") or result.get("command", "No command returned."))
+
+            if "error" in result:
+                print(f"Error: {result['error']}")
+                sys.exit(1)
+
+            command = result.get("command")
+            if not command:
+                print("No command returned.")
+                sys.exit(1)
+
+            # Print the suggested command clearly
+            print(f"\\n\\033[1;36m{command}\\033[0m\\n")
+
+            # Prompt the user
+            choice = input("Do you want to execute this command? [y/N] ").strip().lower()
+            if choice == 'y':
+                print() # Add a blank line for readability before execution
+                subprocess.run(command, shell=True)
+
     except urllib.error.URLError:
         print("Error: Tunnel is down. Did you connect using sshq?")
 
