@@ -15,7 +15,7 @@ When working on embedded boards (like Yocto or Buildroot builds), you often face
 ## How it Works
 
 1. **The Host Server:** When you run `sshq`, it spins up a lightweight local web server in the background on your laptop. This server securely holds your `GEMINI_API_KEY` and talks to the Gemini API.
-2. **The Reverse Tunnel:** `sshq` wraps your standard `ssh` command and adds a reverse port forward (`-R 5000:localhost:5000`), creating a secure tunnel from the board back to your laptop.
+2. **The Reverse Tunnel:** `sshq` wraps your standard `ssh` command and adds a reverse port forward to a random local port, creating a secure tunnel from the board back to your laptop.
 3. **Transparent Injection:** During login, `sshq` passes a Python one-liner to the board (the `q` client script) and drops it into `~/.local/bin/q`, and immediately hands you an interactive shell.
 
 ## Prerequisites
@@ -76,5 +76,4 @@ $
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `GEMINI_API_KEY` | Yes | — | Your Gemini API key. Used by the local server to call the Gemini API. |
-| `SSHQ_GEMINI_MODEL` | No | `gemini-2.5-flash` | Gemini model name used for command suggestions. |
-| `SSHQ_TUNNEL_PORT` | No | `5000` | Local port for the reverse SSH tunnel and the host server. Change this if port 5000 is already in use. |
+| `SSHQ_GEMINI_MODEL` | No | `gemini-2.5-flash` | Gemini model used for command suggestions. You can also use `gemini-2.5-flash-lite`, which typically offers a higher quota. |

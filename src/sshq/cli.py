@@ -1,5 +1,6 @@
 import sys
 import os
+import socket
 import subprocess
 import threading
 import base64
@@ -75,7 +76,9 @@ def main():
         print("Usage: sshq [standard ssh arguments, e.g., user@host]")
         sys.exit(1)
 
-    port = int(os.environ.get("SSHQ_TUNNEL_PORT", "5000"))
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
 
     # Build the q script with the configured port
     q_script = Q_SCRIPT.format(port=port)
