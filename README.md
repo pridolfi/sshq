@@ -35,25 +35,38 @@ pip install git+https://gitlab.cee.redhat.com/pridolfi/sshq.git
 (Note: You can also clone the repo and use `pip install -e .` if you plan to modify the code).
 
 ## Usage
-Export your API key in your terminal (or add it to your `~/.bashrc` / `~/.zshrc`):
+1. Export your API key in your terminal (or add it to your `~/.bashrc` / `~/.zshrc`):
 
 ```bash
 export GEMINI_API_KEY="your_api_key_here"
 ```
 
-Connect to your board exactly as you normally would, just replace ssh with sshq:
+2. Connect to your board exactly as you normally would, just replace ssh with sshq:
 
 ```bash
 sshq root@192.168.1.100
 ```
 (Note: Any standard SSH flags, like `-i key.pem` or `-p 2222`, will work perfectly).
 
-Once connected to the board, use the q command to ask for shell commands:
+3. Once connected to the board, use the q command to ask for shell commands. The AI will suggest a command, print it in bold cyan, and ask if you want to run it:
 
 ```bash
 $ q find the top 5 largest files in /var/log
+
 find /var/log -type f -exec du -Sh {} + | sort -rh | head -n 5
 
+Do you want to execute this command? [y/N] y
+
+15M     /var/log/syslog
+10M     /var/log/messages
+8.2M    /var/log/kern.log
+5.1M    /var/log/auth.log
+2.3M    /var/log/dpkg.log
+
 $ q extract the tarball archive.tar.gz to /tmp
+
 tar -xzf archive.tar.gz -C /tmp
+
+Do you want to execute this command? [y/N] n
+$
 ```
