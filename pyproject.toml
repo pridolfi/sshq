@@ -7,11 +7,16 @@ name = "sshq"
 version = "0.1.0"
 description = "AI-assisted SSH wrapper"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.9"
 dependencies = [
     "flask",
     "google-genai"
 ]
+authors = [
+    { name = "Pablo Ridolfi", email = "pabloridolfi@gmail.com" }
+]
+urls = { Repository = "https://github.com/pridolfi/sshq" }
 
 [project.scripts]
 sshq = "sshq.cli:main"

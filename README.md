@@ -29,7 +29,7 @@ When working on embedded boards (like Yocto or Buildroot builds), you often face
 Using `pip`:
 
 ```bash
-pip install git+https://gitlab.cee.redhat.com/pridolfi/sshq.git
+pip install git+https://github.com/pridolfi/sshq.git
 ```
 
 (Note: You can also clone the repo and use `pip install -e .` if you plan to modify the code).
