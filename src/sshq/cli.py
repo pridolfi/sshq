@@ -17,11 +17,11 @@ def main():
         sys.exit(1)
 
     prompt = " ".join(sys.argv[1:])
-    data = json.dumps({"prompt": prompt}).encode('utf-8')
+    data = json.dumps({{"prompt": prompt}}).encode('utf-8')
     req = urllib.request.Request(
-        "http://localhost:5000/ask",
+        "http://localhost:{port}/ask",
         data=data,
-        headers={'Content-Type': 'application/json'}
+        headers={{'Content-Type': 'application/json'}}
     )
 
     try:
@@ -29,7 +29,7 @@ def main():
             result = json.loads(response.read().decode())
 
             if "error" in result:
-                print(f"Error: {result['error']}")
+                print(f"Error: {{result['error']}}")
                 sys.exit(1)
 
             command = result.get("command")
@@ -38,7 +38,7 @@ def main():
                 sys.exit(1)
 
             # Print the suggested command clearly
-            print(f"\\n\\033[1;36m{command}\\033[0m\\n")
+            print(f"\\n\\033[1;36m{{command}}\\033[0m\\n")
 
             # Prompt the user
             choice = input("Do you want to execute this command? [y/N] ").strip().lower()
@@ -46,8 +46,20 @@ def main():
                 print() # Add a blank line for readability before execution
                 subprocess.run(command, shell=True)
 
-    except urllib.error.URLError:
+    except urllib.error.HTTPError as e:
+        try:
+            body = e.read().decode()
+            result = json.loads(body)
+            msg = result.get("error", body or e.reason)
+        except Exception:
+            msg = e.reason or str(e)
+        print(f"Error: {{msg}}")
+        sys.exit(1)
+    except urllib.error.URLError as e:
         print("Error: Tunnel is down. Did you connect using sshq?")
+        if e.reason:
+            print(f"  ({{e.reason}})")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
@@ -63,12 +75,17 @@ def main():
         print("Usage: sshq [standard ssh arguments, e.g., user@host]")
         sys.exit(1)
 
+    port = int(os.environ.get("SSHQ_TUNNEL_PORT", "5000"))
+
+    # Build the q script with the configured port
+    q_script = Q_SCRIPT.format(port=port)
+
     # Start the Flask server in a background thread
-    server_thread = threading.Thread(target=start_server, daemon=True)
+    server_thread = threading.Thread(target=start_server, kwargs={"port": port}, daemon=True)
     server_thread.start()
 
     # Base64 encode the script to avoid quoting/newline nightmares in the SSH command
-    b64_script = base64.b64encode(Q_SCRIPT.encode('utf-8')).decode('utf-8')
+    b64_script = base64.b64encode(q_script.encode('utf-8')).decode('utf-8')
 
     # The magic payload:
     # 1. Uses Python on the board to decode and save the script to ~/.local/bin/q
@@ -84,7 +101,7 @@ def main():
     )
 
     # We add '-t' to force TTY allocation so the interactive shell works properly
-    ssh_args = ['ssh', '-t', '-R', '5000:localhost:5000'] + args + [remote_cmd]
+    ssh_args = ['ssh', '-t', '-R', f'{port}:localhost:{port}'] + args + [remote_cmd]
 
     try:
         # Run ssh and hand over terminal control to it

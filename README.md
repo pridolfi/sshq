@@ -70,3 +70,11 @@ tar -xzf archive.tar.gz -C /tmp
 Do you want to execute this command? [y/N] n
 $
 ```
+
+## Environment variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GEMINI_API_KEY` | Yes | — | Your Gemini API key. Used by the local server to call the Gemini API. |
+| `SSHQ_GEMINI_MODEL` | No | `gemini-2.5-flash` | Gemini model name used for command suggestions. |
+| `SSHQ_TUNNEL_PORT` | No | `5000` | Local port for the reverse SSH tunnel and the host server. Change this if port 5000 is already in use. |
