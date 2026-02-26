@@ -5,11 +5,11 @@ from flask import Flask, request, jsonify
 from google import genai
 from google.genai import types
 
-# 1. Suppress standard Werkzeug request logging
+# Suppress standard Werkzeug request logging
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
-# 2. Modern way to suppress the Flask startup banner
+# Suppress the Flask startup banner
 flask.cli.show_server_banner = lambda *args: None
 
 app = Flask(__name__)
@@ -42,10 +42,9 @@ def ask():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-def start_server(port=None):
+def start_server(port):
     global client
     # Client automatically picks up the GEMINI_API_KEY environment variable
     client = genai.Client()
 
-    port = port or int(os.environ.get("SSHQ_TUNNEL_PORT", "5000"))
     app.run(port=port, host='127.0.0.1', debug=False)
