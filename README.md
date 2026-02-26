@@ -4,6 +4,8 @@
 
 It seamlessly injects a lightweight, AI-powered query command (`q`) into your SSH session, allowing you to ask for complex shell commands without ever leaving your terminal or searching the web.
 
+![usage](docs/images/usage.gif)
+
 ## Why `sshq`?
 
 When working on embedded boards (like Yocto or Buildroot builds), you often face two problems:
