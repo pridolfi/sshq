@@ -4,6 +4,7 @@ import socket
 import subprocess
 import threading
 import base64
+from importlib.metadata import version
 from .server import start_server
 
 Q_SCRIPT = """#!/usr/bin/env python3
@@ -71,10 +72,14 @@ def main():
         print("Error: GEMINI_API_KEY environment variable is not set.", file=sys.stderr)
         sys.exit(1)
 
+    prog = os.path.basename(sys.argv[0])
     args = sys.argv[1:]
     if not args:
-        print("Usage: sshq [standard ssh arguments, e.g., user@host]")
+        print(f"Usage: {prog} [standard ssh arguments, e.g., user@host]")
         sys.exit(1)
+    if args in (["--version"], ["-V"]):
+        print(version(__package__ or "sshq"))
+        sys.exit(0)
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
