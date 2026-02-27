@@ -18,5 +18,16 @@ authors = [
 ]
 urls = { Repository = "https://github.com/pridolfi/sshq" }
 
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "ruff>=0.8.0"]
+
 [project.scripts]
 sshq = "sshq.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+src = ["src", "tests"]
