@@ -73,6 +73,46 @@ Do you want to execute this command? [y/N] n
 $
 ```
 
+## File Analysis with `--analyze`
+
+In addition to command suggestions, `sshq` provides AI-powered file analysis capabilities. Use the `--analyze` flag with the `q` command to ask questions about files on your embedded board.
+
+![analyze](docs/images/analyze.gif)
+
+### Usage
+
+```bash
+q --analyze <file_path> <your_question>
+```
+
+### Example
+
+```
+$ q --analyze /proc/cpuinfo What CPU architecture and features does this system have? Explain them briefly.
+The system has the following CPU architecture and features:
+
+CPU Architecture:
+- 8: This indicates an ARMv8-A architecture, which is a 64-bit instruction set architecture.
+
+CPU Features:
+- fp: Floating Point - Hardware support for floating-point arithmetic.
+- asimd: Advanced SIMD (Single Instruction, Multiple Data) - Provides parallel processing capabilities for multimedia and signal processing.
+- evtstrm: Event Stream - Support for performance monitoring unit (PMU) event streams.
+- aes: Advanced Encryption Standard - Hardware acceleration for AES encryption and decryption.
+- pmull: Polynomial Multiply - Hardware support for polynomial multiplication, often used in cryptographic operations like GCM.
+- sha1: Secure Hash Algorithm 1 - Hardware acceleration for SHA-1 hashing.
+- sha2: Secure Hash Algorithm 2 - Hardware acceleration for SHA-2 (SHA-256, SHA-512) hashing.
+- crc32: Cyclic Redundancy Check 32-bit - Hardware acceleration for CRC32 calculations, used for data integrity checks.
+- atomics: Atomic operations - Hardware support for atomic memory operations, crucial for multi-threaded programming.
+- fphp: Half-precision Floating Point - Support for 16-bit half-precision floating-point numbers.
+- asimdhp: Half-precision Advanced SIMD - SIMD operations that can operate on half-precision floating-point data.
+- cpuid: CPU ID - Instruction to read CPU identification and feature registers.
+- asimdrdm: Advanced SIMD Rounding Double Multiply Accumulate - SIMD instructions for rounding double multiply accumulate operations.
+- lrcpc: Load-acquire/Release Consistency Point Cache - Support for Load-acquire/Release instructions for memory consistency.
+- dcpop: Data Cache Zero - Instruction to zero a cache line without loading it from memory.
+- asimddp: Advanced SIMD Dot Product - SIMD instructions for dot product operations, useful for machine learning workloads.
+```
+
 ## Environment variables
 
 | Variable | Required | Default | Description |
