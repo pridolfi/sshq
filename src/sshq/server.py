@@ -42,6 +42,37 @@ def ask():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+@app.route('/analyze', methods=['POST'])
+def analyze():
+    data = request.json
+    if not data or 'prompt' not in data or 'content' not in data:
+        return jsonify({"error": "prompt and content are required"}), 400
+
+    system_instruction = (
+        "You are an expert embedded Linux engineer analyzing text and log files. "
+        "Answer the user's question about the provided content clearly and concisely. "
+        "Do NOT use markdown formatting for the answer, and do NOT use markdown code fences for the content itself."
+    )
+
+    model = os.environ.get("SSHQ_GEMINI_MODEL", "gemini-2.5-flash")
+    # Combine content and user question so the model has full context
+    contents = f"Content to analyze:\n\n{data['content']}\n\nUser question: {data['prompt']}"
+
+    try:
+        response = client.models.generate_content(
+            model=model,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.0,
+            ),
+        )
+        return jsonify({"analysis": response.text.strip()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 def start_server(port):
     global client
     # Client automatically picks up the GEMINI_API_KEY environment variable

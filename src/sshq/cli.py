@@ -16,8 +16,53 @@ import subprocess
 def main():
     if len(sys.argv) < 2:
         print("Usage: q <your prompt>")
+        print("       q --analyze <file> <prompt>")
         sys.exit(1)
 
+    # q --analyze <file> <prompt>
+    if len(sys.argv) >= 3 and sys.argv[1] == "--analyze":
+        filepath = sys.argv[2]
+        prompt = " ".join(sys.argv[3:]).strip()
+        if not prompt:
+            print("Usage: q --analyze <file> <prompt>")
+            sys.exit(1)
+        try:
+            with open(filepath, encoding="utf-8", errors="replace") as f:
+                content = f.read()
+        except OSError as e:
+            print(f"Error: cannot read {{filepath}}: {{e}}")
+            sys.exit(1)
+
+        data = json.dumps({{"prompt": prompt, "content": content}}).encode("utf-8")
+        req = urllib.request.Request(
+            "http://localhost:{port}/analyze",
+            data=data,
+            headers={{'Content-Type': 'application/json'}},
+        )
+        try:
+            with urllib.request.urlopen(req) as response:
+                result = json.loads(response.read().decode())
+                if "error" in result:
+                    print(f"Error: {{result['error']}}")
+                    sys.exit(1)
+                print(result.get("analysis", ""))
+        except urllib.error.HTTPError as e:
+            try:
+                body = e.read().decode()
+                res = json.loads(body)
+                msg = res.get("error", body or e.reason)
+            except Exception:
+                msg = e.reason or str(e)
+            print(f"Error: {{msg}}")
+            sys.exit(1)
+        except urllib.error.URLError as e:
+            print("Error: Tunnel is down. Did you connect using sshq?")
+            if e.reason:
+                print(f"  ({{e.reason}})")
+            sys.exit(1)
+        return
+
+    # q <prompt> -> suggest command
     prompt = " ".join(sys.argv[1:])
     data = json.dumps({{"prompt": prompt}}).encode('utf-8')
     req = urllib.request.Request(

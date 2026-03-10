@@ -26,6 +26,9 @@ sshq = "sshq.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning:google.genai.*",
+]
 
 [tool.ruff]
 target-version = "py39"
