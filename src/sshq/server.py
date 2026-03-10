@@ -52,7 +52,8 @@ def analyze():
     system_instruction = (
         "You are an expert embedded Linux engineer analyzing text and log files. "
         "Answer the user's question about the provided content clearly and concisely. "
-        "Do NOT use markdown formatting for the answer, and do NOT use markdown code fences for the content itself."
+        "Do NOT use markdown formatting for the answer, and do NOT use markdown code fences for the content itself. "
+        "You can use bullets and numbered lists to format the answer, in plain ASCII."
     )
 
     model = os.environ.get("SSHQ_GEMINI_MODEL", "gemini-2.5-flash")
