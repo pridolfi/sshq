@@ -16,10 +16,10 @@ def client(app):
 
 
 @pytest.fixture(autouse=True)
-def mock_genai_client():
-    """Mock the genai client so we never call the real API."""
+def mock_backend():
+    """Mock the AI backend so we never call real APIs."""
     mock = MagicMock()
-    with patch("sshq.server.client", mock):
+    with patch("sshq.server.backend", mock):
         yield mock
 
 
@@ -35,19 +35,17 @@ def test_ask_without_prompt_returns_400(client):
     assert r.status_code == 400
 
 
-def test_ask_with_prompt_returns_command(client, mock_genai_client):
-    mock_response = MagicMock()
-    mock_response.text = "  ls -la\n"
-    mock_genai_client.models.generate_content.return_value = mock_response
+def test_ask_with_prompt_returns_command(client, mock_backend):
+    mock_backend.return_value = "ls -la"
 
     r = client.post("/ask", json={"prompt": "list files"})
     assert r.status_code == 200
     assert r.json == {"command": "ls -la"}
-    mock_genai_client.models.generate_content.assert_called_once()
+    mock_backend.assert_called_once()
 
 
-def test_ask_on_api_error_returns_500(client, mock_genai_client):
-    mock_genai_client.models.generate_content.side_effect = RuntimeError("API error")
+def test_ask_on_api_error_returns_500(client, mock_backend):
+    mock_backend.side_effect = RuntimeError("API error")
 
     r = client.post("/ask", json={"prompt": "do something"})
     assert r.status_code == 500
@@ -70,10 +68,8 @@ def test_analyze_without_prompt_or_content_returns_400(client):
     assert r.status_code == 400
 
 
-def test_analyze_with_prompt_and_content_returns_analysis(client, mock_genai_client):
-    mock_response = MagicMock()
-    mock_response.text = "I see 2 failures in the log."
-    mock_genai_client.models.generate_content.return_value = mock_response
+def test_analyze_with_prompt_and_content_returns_analysis(client, mock_backend):
+    mock_backend.return_value = "I see 2 failures in the log."
 
     r = client.post(
         "/analyze",
@@ -81,11 +77,11 @@ def test_analyze_with_prompt_and_content_returns_analysis(client, mock_genai_cli
     )
     assert r.status_code == 200
     assert r.json == {"analysis": "I see 2 failures in the log."}
-    mock_genai_client.models.generate_content.assert_called_once()
+    mock_backend.assert_called_once()
 
 
-def test_analyze_on_api_error_returns_500(client, mock_genai_client):
-    mock_genai_client.models.generate_content.side_effect = RuntimeError("API error")
+def test_analyze_on_api_error_returns_500(client, mock_backend):
+    mock_backend.side_effect = RuntimeError("API error")
 
     r = client.post(
         "/analyze",

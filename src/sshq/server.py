@@ -1,9 +1,8 @@
 import logging
-import os
 import flask.cli
 from flask import Flask, request, jsonify
-from google import genai
-from google.genai import types
+
+from .backends import get_backend
 
 # Suppress standard Werkzeug request logging
 log = logging.getLogger('werkzeug')
@@ -13,7 +12,8 @@ log.setLevel(logging.ERROR)
 flask.cli.show_server_banner = lambda *args: None
 
 app = Flask(__name__)
-client = None  # Initialized when the server starts
+backend = None  # Set to generate(prompt, system_instruction, temperature) in start_server
+
 
 @app.route('/ask', methods=['POST'])
 def ask():
@@ -27,18 +27,9 @@ def ask():
         "Do NOT use markdown formatting (like ```bash). Do NOT provide explanations."
     )
 
-    model = os.environ.get("SSHQ_GEMINI_MODEL", "gemini-2.5-flash")
-
     try:
-        response = client.models.generate_content(
-            model=model,
-            contents=data['prompt'],
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=0.0
-            )
-        )
-        return jsonify({"command": response.text.strip()})
+        text = backend(data['prompt'], system_instruction, temperature=0.0)
+        return jsonify({"command": text})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -56,27 +47,17 @@ def analyze():
         "You can use bullets and numbered lists to format the answer, in plain ASCII."
     )
 
-    model = os.environ.get("SSHQ_GEMINI_MODEL", "gemini-2.5-flash")
-    # Combine content and user question so the model has full context
     contents = f"Content to analyze:\n\n{data['content']}\n\nUser question: {data['prompt']}"
 
     try:
-        response = client.models.generate_content(
-            model=model,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=0.0,
-            ),
-        )
-        return jsonify({"analysis": response.text.strip()})
+        text = backend(contents, system_instruction, temperature=0.0)
+        return jsonify({"analysis": text})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
 def start_server(port):
-    global client
-    # Client automatically picks up the GEMINI_API_KEY environment variable
-    client = genai.Client()
+    global backend
+    backend = get_backend()
 
     app.run(port=port, host='127.0.0.1', debug=False)

@@ -113,8 +113,8 @@ if __name__ == "__main__":
 """
 
 def main():
-    if not os.environ.get("GEMINI_API_KEY"):
-        print("Error: GEMINI_API_KEY environment variable is not set.", file=sys.stderr)
+    if not os.environ.get("GROQ_API_KEY") and not os.environ.get("GEMINI_API_KEY"):
+        print("Error: Set GROQ_API_KEY or GEMINI_API_KEY.", file=sys.stderr)
         sys.exit(1)
 
     prog = os.path.basename(sys.argv[0])
