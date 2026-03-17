@@ -16,14 +16,16 @@ When working on embedded boards (like Yocto or Buildroot builds), you often face
 
 ## How it Works
 
-1. **The Host Server:** When you run `sshq`, it spins up a lightweight local web server in the background on your laptop. This server securely holds your `GEMINI_API_KEY` and talks to the Gemini API.
+1. **The Host Server:** When you run `sshq`, it spins up a lightweight local web server in the background on your laptop. This server holds your API key and talks to Groq if `GROQ_API_KEY` is set, otherwise to Gemini.
 2. **The Reverse Tunnel:** `sshq` wraps your standard `ssh` command and adds a reverse port forward to a random local port, creating a secure tunnel from the board back to your laptop.
 3. **Transparent Injection:** During login, `sshq` passes a Python one-liner to the board (the `q` client script) and drops it into `~/.local/bin/q`, and immediately hands you an interactive shell.
 
 ## Prerequisites
 
 * Python 3.9 or higher (on your host machine).
-* A Gemini API key (get one from Google AI Studio or Google Cloud console).
+* An API key for at least one supported AI provider:
+  * **Groq** (free tier): get a key from [Groq Console](https://console.groq.com/). If set, `GROQ_API_KEY` is used first.
+  * **Gemini** (default otherwise): get a key from [Google AI Studio](https://aistudio.google.com/) or Google Cloud console.
 * Python 3 installed on the target embedded board (standard library only; no external packages required).
 
 ## Installation
@@ -37,11 +39,19 @@ pip install git+https://github.com/pridolfi/sshq.git
 (Note: You can also clone the repo and use `pip install -e .` if you plan to modify the code).
 
 ## Usage
-1. Export your API key in your terminal (or add it to your `~/.bashrc` / `~/.zshrc`):
+1. Export your API key in your terminal (or add it to your `~/.bashrc` / `~/.zshrc`). If `GROQ_API_KEY` is set it is used; otherwise `GEMINI_API_KEY` is required.
 
-```bash
-export GEMINI_API_KEY="your_api_key_here"
-```
+   **Groq** (free tier):
+
+   ```bash
+   export GROQ_API_KEY="your_groq_api_key_here"
+   ```
+
+   **Gemini** (used when `GROQ_API_KEY` is not set):
+
+   ```bash
+   export GEMINI_API_KEY="your_gemini_api_key_here"
+   ```
 
 2. Connect to your board exactly as you normally would, just replace ssh with sshq:
 
@@ -117,5 +127,7 @@ CPU Features:
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `GEMINI_API_KEY` | Yes | — | Your Gemini API key. Used by the local server to call the Gemini API. |
-| `SSHQ_GEMINI_MODEL` | No | `gemini-2.5-flash` | Gemini model used for command suggestions. You can also use `gemini-2.5-flash-lite`, which typically offers a higher quota. |
+| `GROQ_API_KEY` | No (tried first) | — | Your Groq API key (free at [console.groq.com](https://console.groq.com)). If set, Groq is used. |
+| `GEMINI_API_KEY` | Yes (if Groq not set) | — | Your Gemini API key. |
+| `SSHQ_GEMINI_MODEL` | No | `gemini-2.5-flash` | Gemini model (e.g. `gemini-2.5-flash-lite` for higher quota). |
+| `SSHQ_GROQ_MODEL` | No | `llama-3.3-70b-versatile` | Groq model (e.g. `llama-3.1-8b-instant` for faster replies). |

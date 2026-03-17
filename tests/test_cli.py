@@ -51,9 +51,8 @@ def test_version_exits_zero_and_prints_version(argv):
     assert err == ""
 
 
-def test_missing_gemini_api_key_exits_nonzero_and_prints_to_stderr():
-    env = {k: v for k, v in os.environ.items() if k != "GEMINI_API_KEY"}
+def test_missing_both_api_keys_exits_nonzero_and_prints_to_stderr():
+    env = {k: v for k, v in os.environ.items() if k not in ("GEMINI_API_KEY", "GROQ_API_KEY")}
     code, out, err = run_main(["user@host"], env=env, clear_env=True)
     assert code != 0
-    assert "GEMINI_API_KEY" in err
-    assert "not set" in err
+    assert "GROQ_API_KEY" in err and "GEMINI_API_KEY" in err
