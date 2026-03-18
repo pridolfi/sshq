@@ -87,7 +87,7 @@ def test_sshq_into_aarch64_ubuntu_run_q_commands(tmp_path):
         cwd=build_dir,
         capture_output=True,
         text=True,
-        timeout=300,
+        timeout=1800,
     )
     if build.returncode != 0:
         pytest.skip(f"Could not build aarch64 image (emulation?): {build.stderr!r}")
