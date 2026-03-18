@@ -44,6 +44,15 @@ def test_ask_with_prompt_returns_command(client, mock_backend):
     mock_backend.assert_called_once()
 
 
+def test_ask_strips_markdown_and_returns_single_command(client, mock_backend):
+    mock_backend.return_value = (
+        "To achieve the user's request, use:\n\n```bash\nsed -i 's/foo/bar/g' test.txt\n```\n\nExplanation: ..."
+    )
+    r = client.post("/ask", json={"prompt": "replace foo by bar in test.txt"})
+    assert r.status_code == 200
+    assert r.json == {"command": "sed -i 's/foo/bar/g' test.txt"}
+
+
 def test_ask_on_api_error_returns_500(client, mock_backend):
     mock_backend.side_effect = RuntimeError("API error")
 

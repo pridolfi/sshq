@@ -28,4 +28,28 @@ jobs:
         run: ruff check src tests
 
       - name: Tests
-        run: pytest tests -v
+        run: pytest tests -v -m "not functional"
+
+  functional:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Set up QEMU (aarch64 emulation)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Install Podman
+        uses: redhat-actions/podman-install@main
+        with:
+          ubuntu-version: "24.04"
+
+      - name: Functional tests
+        run: pytest tests -v -m functional

@@ -27,6 +27,9 @@ sshq = "sshq.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "functional: marks tests as functional (require Podman, aarch64 container)",
+]
 filterwarnings = [
     "ignore::DeprecationWarning:google.genai.*",
 ]
