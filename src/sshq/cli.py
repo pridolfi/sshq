@@ -4,8 +4,60 @@ import socket
 import subprocess
 import threading
 import base64
+import time
 from importlib.metadata import version
 from .server import start_server
+
+# Container name for sshq-managed RamaLama (so we can stop it on exit)
+RAMALAMA_CONTAINER_NAME = "sshq-ramalama"
+
+
+def _is_port_in_use(host: str, port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.settimeout(0.5)
+            s.connect((host, port))
+            return True
+        except (OSError, socket.error):
+            return False
+
+
+def _wait_for_port(host: str, port: int, timeout_sec: float = 120, interval_sec: float = 1.0) -> bool:
+    deadline = time.monotonic() + timeout_sec
+    while time.monotonic() < deadline:
+        if _is_port_in_use(host, port):
+            return True
+        time.sleep(interval_sec)
+    return False
+
+
+def _start_ramalama(port: int, model: str) -> bool:
+    """Start RamaLama serve in the background. Return True if we started it, False if port was in use."""
+    if _is_port_in_use("127.0.0.1", port):
+        return False
+    try:
+        subprocess.run(
+            ["ramalama", "serve", "-d", "-p", str(port), "--name", RAMALAMA_CONTAINER_NAME, model],
+            check=True,
+            capture_output=True,
+            timeout=300,
+        )
+    except FileNotFoundError:
+        print("Error: 'ramalama' not found. Install it from https://ramalama.ai/ or set SSHQ_LOCAL_BASE_URL to an existing server.", file=sys.stderr)
+        print("To install RamaLama, run: curl -fsSL https://ramalama.ai/install.sh | bash", file=sys.stderr)
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: ramalama serve failed: {e.stderr.decode() if e.stderr else e}", file=sys.stderr)
+        sys.exit(1)
+    if not _wait_for_port("127.0.0.1", port):
+        print("Error: RamaLama server did not become ready in time. Try running 'ramalama serve -d -p {} {}' manually.".format(port, model), file=sys.stderr)
+        subprocess.run(["ramalama", "stop", RAMALAMA_CONTAINER_NAME], capture_output=True)
+        sys.exit(1)
+    return True
+
+
+def _stop_ramalama() -> None:
+    subprocess.run(["ramalama", "stop", RAMALAMA_CONTAINER_NAME], capture_output=True, timeout=10)
 
 Q_SCRIPT = """#!/usr/bin/env python3
 import sys
@@ -113,8 +165,9 @@ if __name__ == "__main__":
 """
 
 def main():
-    if not os.environ.get("GROQ_API_KEY") and not os.environ.get("GEMINI_API_KEY"):
-        print("Error: Set GROQ_API_KEY or GEMINI_API_KEY.", file=sys.stderr)
+    use_local = os.environ.get("SSHQ_USE_LOCAL", "").lower() in ("1", "true", "yes", "y")
+    if not use_local and not os.environ.get("GROQ_API_KEY") and not os.environ.get("GEMINI_API_KEY"):
+        print("Error: Set SSHQ_USE_LOCAL=1 for local (RamaLama), or GROQ_API_KEY, or GEMINI_API_KEY.", file=sys.stderr)
         sys.exit(1)
 
     prog = os.path.basename(sys.argv[0])
@@ -129,6 +182,15 @@ def main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
+
+    # When using local (RamaLama), start the model server if not already running
+    we_started_ramalama = False
+    if use_local and not os.environ.get("SSHQ_LOCAL_BASE_URL"):
+        ramalama_port = int(os.environ.get("SSHQ_RAMALAMA_PORT", "8080"))
+        model = os.environ.get("SSHQ_LOCAL_MODEL", "llama3.2:1b")
+        if _start_ramalama(ramalama_port, model):
+            we_started_ramalama = True
+        os.environ["SSHQ_LOCAL_BASE_URL"] = f"http://127.0.0.1:{ramalama_port}/v1"
 
     # Build the q script with the configured port
     q_script = Q_SCRIPT.format(port=port)
@@ -164,3 +226,6 @@ def main():
     except FileNotFoundError:
         print("Error: 'ssh' command not found.", file=sys.stderr)
         sys.exit(1)
+    finally:
+        if we_started_ramalama:
+            _stop_ramalama()

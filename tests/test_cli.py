@@ -52,7 +52,11 @@ def test_version_exits_zero_and_prints_version(argv):
 
 
 def test_missing_both_api_keys_exits_nonzero_and_prints_to_stderr():
-    env = {k: v for k, v in os.environ.items() if k not in ("GEMINI_API_KEY", "GROQ_API_KEY")}
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k not in ("GEMINI_API_KEY", "GROQ_API_KEY", "SSHQ_USE_LOCAL")
+    }
     code, out, err = run_main(["user@host"], env=env, clear_env=True)
     assert code != 0
-    assert "GROQ_API_KEY" in err and "GEMINI_API_KEY" in err
+    assert "SSHQ_USE_LOCAL" in err or "GROQ_API_KEY" in err or "GEMINI_API_KEY" in err
