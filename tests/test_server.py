@@ -99,3 +99,77 @@ def test_analyze_on_api_error_returns_500(client, mock_backend):
     assert r.status_code == 500
     assert "error" in r.json
     assert "API error" in r.json["error"]
+
+
+# --- /agentic ---
+
+
+def test_agentic_without_goal_returns_400(client):
+    r = client.post("/agentic", json={})
+    assert r.status_code == 400
+    assert "goal" in r.json["error"].lower()
+
+    r = client.post("/agentic", json={"goal": "   "})
+    assert r.status_code == 400
+
+
+def test_agentic_invalid_history_returns_400(client):
+    r = client.post("/agentic", json={"goal": "check disk", "history": "not-a-list"})
+    assert r.status_code == 400
+
+
+def test_agentic_returns_command(client, mock_backend):
+    mock_backend.return_value = '{"type": "command", "command": "df -h"}'
+
+    r = client.post("/agentic", json={"goal": "show disk usage", "history": []})
+    assert r.status_code == 200
+    assert r.json == {"action": "command", "command": "df -h"}
+    mock_backend.assert_called_once()
+
+
+def test_agentic_returns_answer(client, mock_backend):
+    mock_backend.return_value = '{"type": "answer", "answer": "The busiest CPU was process foo."}'
+
+    r = client.post(
+        "/agentic",
+        json={
+            "goal": "who used the CPU?",
+            "history": [
+                {
+                    "command": "ps aux",
+                    "stdout": "foo 99%",
+                    "stderr": "",
+                    "exit_code": 0,
+                }
+            ],
+        },
+    )
+    assert r.status_code == 200
+    assert r.json == {
+        "action": "answer",
+        "answer": "The busiest CPU was process foo.",
+    }
+
+
+def test_agentic_accepts_json_in_markdown_fence(client, mock_backend):
+    mock_backend.return_value = '```json\n{"type": "command", "command": "uptime"}\n```'
+
+    r = client.post("/agentic", json={"goal": "load average"})
+    assert r.status_code == 200
+    assert r.json == {"action": "command", "command": "uptime"}
+
+
+def test_agentic_on_parse_error_returns_500(client, mock_backend):
+    mock_backend.return_value = "not json"
+
+    r = client.post("/agentic", json={"goal": "x"})
+    assert r.status_code == 500
+    assert "error" in r.json
+
+
+def test_agentic_on_api_error_returns_500(client, mock_backend):
+    mock_backend.side_effect = RuntimeError("API error")
+
+    r = client.post("/agentic", json={"goal": "x"})
+    assert r.status_code == 500
+    assert "API error" in r.json["error"]

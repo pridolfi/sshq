@@ -5,6 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
+from sshq.cli import Q_SCRIPT
+
 
 def run_main(argv, env=None, prog="sshq", clear_env=False):
     """Run cli.main with given argv and env; return (exit_code, stdout, stderr)."""
@@ -49,6 +51,10 @@ def test_version_exits_zero_and_prints_version(argv):
     assert code == 0
     assert out.strip() == "0.1.0"
     assert err == ""
+
+
+def test_q_script_format_is_valid_python():
+    compile(Q_SCRIPT.format(port=12345), "<q>", "exec")
 
 
 def test_missing_both_api_keys_exits_nonzero_and_prints_to_stderr():

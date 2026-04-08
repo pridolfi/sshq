@@ -132,6 +132,40 @@ CPU Features:
 - asimddp: Advanced SIMD Dot Product - SIMD instructions for dot product operations, useful for machine learning workloads.
 ```
 
+## Agentic mode with `--agentic`
+
+For goals that need **several** shell steps (investigate, then drill down, then summarize), use agentic mode. You describe the outcome you want; the AI suggests one command at a time. After each run, **stdout and stderr** are sent back through the tunnel to your laptop, and the model either proposes the next command or returns a **final answer** when it has enough information.
+
+This is the same safety model as plain `q`: each command is shown in bold cyan and you confirm with **y** before it runs.
+
+### Usage
+
+```bash
+q --agentic <your goal or question>
+```
+
+Optional environment variables (read in the **shell where `q` runs**, usually on the board) are listed in [Environment variables](#environment-variables) under `SSHQ_AGENTIC_*`.
+
+### Example
+
+```bash
+$ q --agentic analyze the process consuming the most CPU over the last 15 minutes
+
+[agentic step 1/25]
+pidstat 1 1
+
+Run this command? [y/N] y
+(... command output appears here ...)
+
+[agentic step 2/25]
+grep ...
+
+Run this command? [y/N] y
+(...)
+
+Based on the command output, the process that consumed the most CPU over the last 15 minutes was ...
+```
+
 ## Local / RamaLama
 
 You can run inference entirely on your machine using [RamaLama](https://ramalama.ai/) (or any OpenAI-compatible server like Ollama or llama.cpp). No API keys are required.
@@ -171,3 +205,5 @@ The local backend uses the same OpenAI `chat/completions` API that RamaLama’s 
 | `GEMINI_API_KEY` | Yes (if neither local nor Groq) | — | Your Gemini API key. |
 | `SSHQ_GEMINI_MODEL` | No | `gemini-2.5-flash` | Gemini model (e.g. `gemini-2.5-flash-lite` for higher quota). |
 | `SSHQ_GROQ_MODEL` | No | `llama-3.3-70b-versatile` | Groq model (e.g. `llama-3.1-8b-instant` for faster replies). |
+| `SSHQ_AGENTIC_MAX_STEPS` | No | `25` | Maximum suggest/run rounds for `q --agentic` (evaluated on the target shell). |
+| `SSHQ_AGENTIC_MAX_OUTPUT_CHARS` | No | `32000` | Per-step cap on captured stdout/stderr sent back to the model (each stream gets half before truncation). |
