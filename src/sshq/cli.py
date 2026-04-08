@@ -64,11 +64,13 @@ import sys
 import json
 import urllib.request
 import subprocess
+import os
 
 def main():
     if len(sys.argv) < 2:
         print("Usage: q <your prompt>")
         print("       q --analyze <file> <prompt>")
+        print("       q --agentic <goal>   # multi-step commands until the goal is answered")
         sys.exit(1)
 
     # q --analyze <file> <prompt>
@@ -113,6 +115,101 @@ def main():
                 print(f"  ({{e.reason}})")
             sys.exit(1)
         return
+
+    # q --agentic <goal> -> multi-step agent loop
+    if len(sys.argv) >= 2 and sys.argv[1] == "--agentic":
+        goal = " ".join(sys.argv[2:]).strip()
+        if not goal:
+            print("Usage: q --agentic <your goal or question>")
+            sys.exit(1)
+
+        def _truncate_field(text, max_len):
+            text = text or ""
+            if len(text) <= max_len:
+                return text
+            return text[: max(0, max_len - 40)] + "\\n[... truncated ...]\\n"
+
+        try:
+            max_steps = int(os.environ.get("SSHQ_AGENTIC_MAX_STEPS", "25"))
+        except ValueError:
+            max_steps = 25
+        try:
+            max_chars = int(os.environ.get("SSHQ_AGENTIC_MAX_OUTPUT_CHARS", "32000"))
+        except ValueError:
+            max_chars = 32000
+        half = max(1000, max_chars // 2)
+
+        history = []
+        for step in range(1, max_steps + 1):
+            payload = json.dumps({{"goal": goal, "history": history}}).encode("utf-8")
+            req = urllib.request.Request(
+                "http://localhost:{port}/agentic",
+                data=payload,
+                headers={{"Content-Type": "application/json"}},
+            )
+            try:
+                with urllib.request.urlopen(req) as response:
+                    result = json.loads(response.read().decode())
+            except urllib.error.HTTPError as e:
+                try:
+                    body = e.read().decode()
+                    res = json.loads(body)
+                    msg = res.get("error", body or e.reason)
+                except Exception:
+                    msg = e.reason or str(e)
+                print(f"Error: {{msg}}")
+                sys.exit(1)
+            except urllib.error.URLError as e:
+                print("Error: Tunnel is down. Did you connect using sshq?")
+                if e.reason:
+                    print(f"  ({{e.reason}})")
+                sys.exit(1)
+
+            if "error" in result and result.get("error"):
+                print(f"Error: {{result['error']}}")
+                sys.exit(1)
+
+            action = result.get("action")
+            if action == "answer":
+                print()
+                print(f"✅ {{result.get('answer', '')}}")
+                return
+
+            if action != "command":
+                print("Error: Unexpected response from server.")
+                sys.exit(1)
+
+            command = result.get("command")
+            if not command:
+                print("Error: No command returned.")
+                sys.exit(1)
+
+            print()
+            print(f"\\033[1;90m[agentic step {{step}}/{{max_steps}}]\\033[0m")
+            print(f"\\033[1;36m{{command}}\\033[0m")
+            print()
+            choice = input("Run this command? [Y/n] ").strip().lower()
+            if choice == "n":
+                print("Aborted.")
+                sys.exit(0)
+
+            print()
+            completed = subprocess.run(command, shell=True, capture_output=True, text=True)
+            if completed.stdout:
+                sys.stdout.write(completed.stdout)
+            if completed.stderr:
+                sys.stderr.write(completed.stderr)
+            out = _truncate_field(completed.stdout, half)
+            err = _truncate_field(completed.stderr, half)
+            history.append({{
+                "command": command,
+                "stdout": out,
+                "stderr": err,
+                "exit_code": completed.returncode,
+            }})
+
+        print(f"Stopped after {{max_steps}} steps (SSHQ_AGENTIC_MAX_STEPS). Increase the limit or narrow the goal.")
+        sys.exit(1)
 
     # q <prompt> -> suggest command
     prompt = " ".join(sys.argv[1:])

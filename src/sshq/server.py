@@ -1,9 +1,76 @@
+import json
 import logging
 import re
+from typing import Optional, Tuple
+
 import flask.cli
 from flask import Flask, request, jsonify
 
 from .backends import get_backend
+
+
+def _extract_json_object(text: str) -> Optional[dict]:
+    """Parse a JSON object from model output, optionally inside a markdown code fence."""
+    text = text.strip()
+    match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", text, re.DOTALL)
+    if match:
+        text = match.group(1)
+    start = text.find("{")
+    if start < 0:
+        return None
+    try:
+        obj, _end = json.JSONDecoder().raw_decode(text, start)
+        if isinstance(obj, dict):
+            return obj
+    except json.JSONDecodeError:
+        pass
+    return None
+
+
+def _format_agentic_history(history: list) -> str:
+    if not history:
+        return "No commands have been run yet."
+    parts = []
+    for i, item in enumerate(history, start=1):
+        cmd = item.get("command", "")
+        code = item.get("exit_code", "")
+        out = item.get("stdout", "") or ""
+        err = item.get("stderr", "") or ""
+        parts.append(
+            f"### Step {i}\n"
+            f"Command: {cmd}\n"
+            f"Exit code: {code}\n"
+            f"Stdout:\n{out}\n"
+            f"Stderr:\n{err}\n"
+        )
+    return "\n".join(parts)
+
+
+def _parse_agentic_response(raw: str) -> Tuple[str, Optional[str], Optional[str]]:
+    """
+    Returns (action, command_or_none, answer_or_none).
+    action is 'command', 'answer', or 'error'.
+    """
+    obj = _extract_json_object(raw)
+    if not obj or not isinstance(obj, dict):
+        return ("error", None, raw.strip() or "Could not parse model response as JSON.")
+
+    typ = (obj.get("type") or "").strip().lower()
+    if typ == "answer":
+        ans = obj.get("answer")
+        if ans is None:
+            ans = obj.get("text")
+        if not isinstance(ans, str) or not ans.strip():
+            return ("error", None, "JSON type 'answer' but missing non-empty 'answer' string.")
+        return ("answer", None, ans.strip())
+
+    if typ == "command":
+        cmd = obj.get("command")
+        if not isinstance(cmd, str) or not cmd.strip():
+            return ("error", None, "JSON type 'command' but missing non-empty 'command' string.")
+        return ("command", cmd.strip(), None)
+
+    return ("error", None, f"Unknown or missing JSON 'type': {typ!r}")
 
 
 def _extract_command(raw: str) -> str:
@@ -75,6 +142,55 @@ def analyze():
     try:
         text = backend(contents, system_instruction, temperature=0.0, max_tokens=1024)
         return jsonify({"analysis": text})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/agentic", methods=["POST"])
+def agentic():
+    data = request.json
+    if not data or "goal" not in data:
+        return jsonify({"error": "goal is required"}), 400
+
+    goal = (data.get("goal") or "").strip()
+    if not goal:
+        return jsonify({"error": "goal must be non-empty"}), 400
+
+    history = data.get("history")
+    if history is None:
+        history = []
+    if not isinstance(history, list):
+        return jsonify({"error": "history must be a list"}), 400
+
+    system_instruction = (
+        "You are an expert embedded Linux engineer helping via a multi-step shell workflow. "
+        "The user is on a device reached through SSH; you never run commands yourself—you only "
+        "propose one shell command at a time or give a final answer.\n\n"
+        "Respond with ONLY one JSON object (no markdown fences, no other text):\n"
+        '- To gather more data: {"type": "command", "command": "<single shell command>"}\n'
+        '- When the user\'s goal is fully satisfied from the information available (including '
+        "outputs in the history): {\"type\": \"answer\", \"answer\": \"<plain text answer>\"}\n\n"
+        "Prefer non-destructive, read-only commands unless the goal requires changes. "
+        "Do NOT use sudo unless clearly needed. One command per step; avoid compound pipelines "
+        "unless necessary. If output was truncated, you may suggest a narrower follow-up command."
+    )
+
+    user_message = (
+        "## User goal\n"
+        f"{goal}\n\n"
+        "## Command history and outputs\n"
+        f"{_format_agentic_history(history)}\n\n"
+        "Decide the next single shell command to run, or answer the goal if you already can."
+    )
+
+    try:
+        text = backend(user_message, system_instruction, temperature=0.0, max_tokens=2048)
+        action, command, answer = _parse_agentic_response(text)
+        if action == "error":
+            return jsonify({"error": answer or "Invalid agentic response"}), 500
+        if action == "answer":
+            return jsonify({"action": "answer", "answer": answer})
+        return jsonify({"action": "command", "command": command})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
